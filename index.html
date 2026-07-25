@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sixline — bookmaker consensus for 6 matches</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  :root {
+    --void: #05070c;
+    --deep: #070d1a;
+    --blue-glow: #1b6bff;
+    --blue-soft: #4d93ff;
+    --blue-dim: #0e2547;
+    --paper: #eef3fb;
+    --paper-soft: #9dabc4;
+    --paper-faint: #5d6b85;
+    --glass: rgba(14, 22, 38, 0.55);
+    --glass-lift: rgba(22, 33, 54, 0.62);
+    --edge: rgba(120, 160, 235, 0.22);
+    --edge-bright: rgba(160, 195, 255, 0.40);
+    --home: #eef3fb;
+    --draw: #48566f;
+    --away: var(--blue-glow);
+    --warn: #ff8a4c;
+    --ok: #35d07f;
+    --font: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    --mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+  }
+
+  body {
+    font-family: var(--font);
+    color: var(--paper);
+    background: var(--void);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+  }
+
+  /* brushed field, dark: deep navy raked with electric blue, no external assets */
+  .field {
+    position: fixed;
+    inset: -20%;
+    z-index: -2;
+    background:
+      radial-gradient(90% 70% at 72% 8%, rgba(27, 107, 255, 0.30) 0%, rgba(5, 7, 12, 0) 58%),
+      radial-gradient(70% 60% at 12% 92%, rgba(13, 60, 150, 0.28) 0%, rgba(5, 7, 12, 0) 60%),
+      linear-gradient(122deg, #04060b 0%, #071227 30%, #0b2148 58%, #061020 82%, #04060b 100%);
+  }
+  .field::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      104deg,
+      rgba(120, 175, 255, 0.13) 0px,
+      rgba(120, 175, 255, 0.13) 1px,
+      rgba(0, 0, 0, 0.00) 3px,
+      rgba(4, 8, 18, 0.30) 7px,
+      rgba(0, 0, 0, 0.00) 10px
+    );
+    mix-blend-mode: screen;
+    opacity: 0.75;
+  }
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    opacity: 0.30;
+    pointer-events: none;
+    mix-blend-mode: overlay;
+  }
+
+  .shell {
+    width: min(1180px, 100%);
+    border-radius: 34px;
+    padding: 10px;
+    background: rgba(120, 160, 235, 0.06);
+    border: 1px solid var(--edge);
+    box-shadow:
+      0 50px 110px -40px rgba(0, 0, 0, 0.95),
+      0 0 90px -50px rgba(27, 107, 255, 0.65),
+      inset 0 1px 0 rgba(180, 210, 255, 0.14);
+    backdrop-filter: blur(6px) saturate(120%);
+    -webkit-backdrop-filter: blur(6px) saturate(120%);
+  }
+
+  .card {
+    border-radius: 26px;
+    padding: 34px 34px 26px;
+    background:
+      radial-gradient(120% 90% at 18% 0%, rgba(27, 107, 255, 0.16) 0%, rgba(7, 13, 26, 0) 48%),
+      radial-gradient(120% 90% at 88% 4%, rgba(77, 147, 255, 0.12) 0%, rgba(7, 13, 26, 0) 52%),
+      var(--glass);
+    border: 1px solid var(--edge);
+    backdrop-filter: blur(42px) saturate(150%);
+    -webkit-backdrop-filter: blur(42px) saturate(150%);
+    box-shadow: inset 0 1px 0 rgba(180, 210, 255, 0.16);
+  }
+
+  header { text-align: center; margin-bottom: 26px; }
+  .mark {
+    width: 46px; height: 46px; margin: 0 auto 14px;
+    border-radius: 14px;
+    background: linear-gradient(160deg, #f4f8ff 0%, #c8d9f5 100%);
+    display: grid; place-items: center;
+    color: #05070c; font-size: 20px; font-weight: 700; letter-spacing: -0.04em;
+    box-shadow: 0 10px 26px -10px rgba(27, 107, 255, 0.9);
+  }
+  h1 {
+    margin: 0 0 6px;
+    font-size: clamp(24px, 3.4vw, 34px);
+    font-weight: 600;
+    letter-spacing: -0.028em;
+  }
+  .sub { margin: 0; color: var(--paper-soft); font-size: 15px; }
+
+  .statusbar {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    justify-content: center; margin-top: 18px;
+  }
+  .chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 15px; border-radius: 999px;
+    background: rgba(120, 160, 235, 0.09);
+    border: 1px solid var(--edge);
+    font-size: 13px; color: var(--paper-soft);
+    white-space: nowrap;
+  }
+  .chip.live::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ok); box-shadow: 0 0 0 3px rgba(53, 208, 127, 0.16);
+  }
+  .chip.absent { color: var(--warn); background: rgba(255, 138, 76, 0.08); border-color: rgba(255, 138, 76, 0.28); }
+  .chip.absent::before {
+    content: ""; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--warn); opacity: 0.6;
+  }
+  .chip b { color: var(--paper); font-weight: 600; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+    gap: 14px;
+    margin-top: 26px;
+  }
+
+  .match {
+    border-radius: 20px;
+    padding: 18px 18px 16px;
+    background: var(--glass-lift);
+    border: 1px solid rgba(120, 160, 235, 0.16);
+    box-shadow: inset 0 1px 0 rgba(180, 210, 255, 0.10);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+  .match .kick {
+    font-family: var(--mono);
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--paper-faint); margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .teams { display: flex; flex-direction: column; gap: 3px; margin-bottom: 14px; }
+  .team { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .team .nm { font-size: 16px; font-weight: 600; letter-spacing: -0.015em; }
+  .team .pc { font-family: var(--mono); font-size: 15px; font-weight: 600; }
+  .team.sec .nm, .team.sec .pc { color: var(--paper-soft); font-weight: 500; }
+
+  .bar { display: flex; height: 9px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); }
+  .bar span { display: block; height: 100%; }
+  .bar .h { background: var(--home); }
+  .bar .d { background: var(--draw); }
+  .bar .a { background: var(--away); box-shadow: 0 0 14px rgba(27,107,255,0.8); }
+  .legend {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 11px; color: var(--paper-faint);
+    margin-top: 7px; letter-spacing: 0.04em;
+  }
+
+  .books { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 13px; }
+  .book {
+    font-family: var(--mono); font-size: 11px;
+    padding: 5px 9px; border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(120, 160, 235, 0.14);
+    color: var(--paper-soft);
+  }
+  .book b { color: var(--paper); font-weight: 600; }
+
+  .spread {
+    margin-top: 12px; padding-top: 11px;
+    border-top: 1px dashed rgba(120, 160, 235, 0.18);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--paper-soft);
+  }
+  .spread .val { font-family: var(--mono); font-weight: 600; color: var(--paper); }
+  .spread .val.hot { color: var(--warn); }
+
+  footer {
+    margin-top: 24px; text-align: center;
+    font-size: 12px; color: var(--paper-faint);
+  }
+  footer code { font-family: var(--mono); font-size: 11px; color: var(--paper-soft); }
+
+  .skeleton { opacity: 0.35; }
+  @media (prefers-reduced-motion: no-preference) {
+    .match { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+    .match:hover {
+      transform: translateY(-2px);
+      border-color: var(--edge-bright);
+      box-shadow: inset 0 1px 0 rgba(180,210,255,0.14), 0 22px 40px -26px rgba(27,107,255,0.75);
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="field"></div>
+<svg class="grain" xmlns="http://www.w3.org/2000/svg">
+  <filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.72" numOctaves="3" stitchTiles="stitch"/></filter>
+  <rect width="100%" height="100%" filter="url(#n)" opacity="0.35"/>
+</svg>
+
+<div class="shell">
+  <div class="card">
+    <header>
+      <div class="mark">6</div>
+      <h1>bookmaker consensus, six matches</h1>
+      <p class="sub">uefa champions league qualifying, second round. 28 july 2026. nothing else.</p>
+      <div class="statusbar" id="statusbar">
+        <span class="chip">loading sources</span>
+      </div>
+    </header>
+
+    <div class="grid" id="grid"></div>
+
+    <footer>
+      <div>frozen at <span id="frozen">—</span> · methodology <code id="method">v0</code> · <code>GET /api/odds</code></div>
+      <div style="margin-top:6px">informational only, not betting advice. odds shown are public data from listed sources.</div>
+    </footer>
+  </div>
+</div>
+
+<script>
+const grid = document.getElementById('grid');
+const statusbar = document.getElementById('statusbar');
+const pct = n => (n == null ? '—' : Math.round(n * 100) + '%');
+
+function renderMatch(m) {
+  const c = m.consensus || {};
+  const h = c.home ?? 0, d = c.draw ?? 0, a = c.away ?? 0;
+  const books = (m.books || []).map(b =>
+    `<span class="book">${b.name} <b>${b.home ?? '—'}</b> / ${b.draw ?? '—'} / ${b.away ?? '—'}</span>`
+  ).join('');
+  const spreadHot = (m.disagreement ?? 0) >= 0.06 ? ' hot' : '';
+  return `
+    <article class="match">
+      <div class="kick"><span>${m.kickoff_local || ''}</span><span>${m.sources_used ?? 0}/${m.sources_total ?? 0} sources</span></div>
+      <div class="teams">
+        <div class="team"><span class="nm">${m.home}</span><span class="pc">${pct(c.home)}</span></div>
+        <div class="team sec"><span class="nm">draw</span><span class="pc">${pct(c.draw)}</span></div>
+        <div class="team"><span class="nm">${m.away}</span><span class="pc">${pct(c.away)}</span></div>
+      </div>
+      <div class="bar">
+        <span class="h" style="width:${h * 100}%"></span>
+        <span class="d" style="width:${d * 100}%"></span>
+        <span class="a" style="width:${a * 100}%"></span>
+      </div>
+      <div class="legend"><span>HOME</span><span>DRAW</span><span>AWAY</span></div>
+      <div class="books">${books || '<span class="book">no book reachable</span>'}</div>
+      <div class="spread">
+        <span>bookmaker disagreement</span>
+        <span class="val${spreadHot}">${m.disagreement == null ? '—' : (m.disagreement * 100).toFixed(1) + ' pts'}</span>
+      </div>
+    </article>`;
+}
+
+function renderStatus(meta) {
+  const src = (meta.sources || []).map(s =>
+    `<span class="chip ${s.status === 'live' ? 'live' : 'absent'}">${s.name}<b>${s.status === 'live' ? '' : ' ' + s.reason}</b></span>`
+  ).join('');
+  const cov = `<span class="chip">coverage <b>${pct(meta.coverage)}</b></span>`;
+  const deg = meta.degraded ? `<span class="chip absent">degraded</span>` : '';
+  statusbar.innerHTML = cov + deg + src;
+}
+
+async function load() {
+  grid.innerHTML = Array.from({ length: 6 }, () =>
+    '<article class="match skeleton"><div class="kick"><span>loading</span></div><div class="teams"><div class="team"><span class="nm">—</span></div></div><div class="bar"></div></article>').join('');
+  try {
+    const r = await fetch('/api/odds', { cache: 'no-store' });
+    const j = await r.json();
+    grid.innerHTML = (j.matches || []).map(renderMatch).join('');
+    renderStatus(j.meta || {});
+    document.getElementById('frozen').textContent = j.meta?.frozen_at || '—';
+    document.getElementById('method').textContent = j.meta?.methodologyVersion || 'v0';
+  } catch (e) {
+    statusbar.innerHTML = '<span class="chip absent">api unreachable, nothing shown rather than guessed</span>';
+    grid.innerHTML = '';
+  }
+}
+load();
+</script>
+</body>
+</html>
