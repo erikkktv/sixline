@@ -285,13 +285,31 @@
       radial-gradient(80% 120% at 50% 120%, rgba(27,107,255,0.20) 0%, rgba(3,7,14,0) 60%),
       rgba(3, 7, 14, 0.62);
   }
-  .geo svg { display: block; width: 100%; height: auto; }
+  .geo svg { display: block; width: 100%; height: auto; max-height: 300px; }
+  .leader { fill: none; stroke: rgba(140,185,255,0.45); stroke-width: 0.6; }
   .geo-tag {
     position: absolute; left: 14px; bottom: 10px;
     font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.07em;
     color: var(--paper-faint); text-transform: uppercase;
   }
-  .grat-line { stroke: rgba(120,160,235,0.16); stroke-width: 0.6; fill: none; }
+  .land {
+    fill: rgba(30, 58, 110, 0.42);
+    stroke: rgba(125, 175, 255, 0.30);
+    stroke-width: 0.5;
+    stroke-linejoin: round;
+  }
+  .geo-legend {
+    position: absolute; right: 14px; top: 12px;
+    display: flex; flex-direction: column; gap: 3px; align-items: flex-end;
+    font-family: var(--mono); font-size: 10px; color: var(--paper-faint);
+  }
+  .geo-legend .row { display: flex; align-items: center; gap: 6px; letter-spacing: 0.03em; }
+  .geo-legend .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--paper-faint); }
+  .geo-legend .row.on { color: var(--paper-soft); }
+  .geo-legend .row.on .dot { background: var(--ok); }
+  .geo-legend .row.off .dot { background: rgba(255,138,76,0.5); }
+
+  .grat-line { stroke: rgba(120,160,235,0.10); stroke-width: 0.5; fill: none; }
   .arc {
     fill: none; stroke: var(--blue-soft); stroke-width: 1.1; opacity: 0.5;
     stroke-dasharray: 5 9;
@@ -347,17 +365,15 @@
       <div class="mark">6</div>
       <h1>bookmaker consensus, six matches</h1>
       <p class="sub">uefa champions league qualifying, second round. 28 july 2026. nothing else.</p>
-      <div class="statusbar" id="statusbar">
-        <span class="chip">loading sources</span>
-      </div>
     </header>
 
     <div class="rail">
       <span class="pulse"><i></i>LIVE</span>
       <span><span class="k">upstream</span> <span class="v" id="t-ms">—</span></span>
       <span><span class="k">snapshots</span> <span class="v" id="t-snap">—</span></span>
-      <span><span class="k">sources</span> <span class="v" id="t-src">—</span></span>
+      <span><span class="k">books</span> <span class="v" id="t-src">—</span></span>
       <span><span class="k">coverage</span> <span class="v" id="t-cov">—</span></span>
+      <span><span class="k">ticks</span> <span class="v" id="t-tick">0</span></span>
       <span class="sep"></span>
       <span><span class="k">next sync</span> <span class="v" id="t-next">—</span></span>
     </div>
@@ -365,20 +381,22 @@
     <div class="ticker"><div class="track" id="track"></div></div>
 
     <div class="geo">
-      <svg id="map" viewBox="0 0 900 380" preserveAspectRatio="xMidYMid meet">
+      <svg id="map" viewBox="0 30 1000 330" preserveAspectRatio="xMidYMid meet">
         <defs>
           <radialGradient id="hub">
             <stop offset="0%" stop-color="#8fc0ff"/><stop offset="100%" stop-color="#1b6bff" stop-opacity="0"/>
           </radialGradient>
         </defs>
-        <g id="grat" opacity="0.5"></g>
+        <g id="grat"></g>
+        <path id="land" class="land" d=""/>
         <g id="arcs"></g>
         <g id="nodes"></g>
-        <circle id="hubdot" r="4.5" fill="#eaf2ff"/>
-        <circle id="hubglow" r="26" fill="url(#hub)"/>
-        <text id="hublabel" font-size="10" fill="#7f8ea8" font-family="ui-monospace,monospace">INGEST</text>
+        <circle id="hubdot" r="3" fill="#eaf2ff"/>
+        <circle id="hubglow" r="20" fill="url(#hub)"/>
+        <text id="hublabel" font-size="7" fill="#8b9ab5" font-family="ui-monospace,monospace">INGEST</text>
       </svg>
-      <div class="geo-tag">venue telemetry · 6 sites · lat/lon of record</div>
+      <div class="geo-tag">venue telemetry · 6 sites · natural earth</div>
+      <div class="geo-legend" id="geo-legend"></div>
     </div>
 
     <div class="grid" id="grid"></div>
@@ -394,7 +412,6 @@
 
 <script>
 const grid = document.getElementById('grid');
-const statusbar = document.getElementById('statusbar');
 const pct = n => (n == null ? '—' : Math.round(n * 100) + '%');
 
 function renderMatch(m) {
@@ -426,13 +443,11 @@ function renderMatch(m) {
     </article>`;
 }
 
+// source status lives quietly on the map, not shouting in the header
 function renderStatus(meta) {
-  const src = (meta.sources || []).map(s =>
-    `<span class="chip ${s.status === 'live' ? 'live' : 'absent'}">${s.name}<b>${s.status === 'live' ? '' : ' ' + s.reason}</b></span>`
+  document.getElementById('geo-legend').innerHTML = (meta.sources || []).map(s =>
+    `<div class="row ${s.status === 'live' ? 'on' : 'off'}"><span>${s.name.toLowerCase()}${s.status === 'live' ? '' : ' · ' + s.reason}</span><span class="dot"></span></div>`
   ).join('');
-  const cov = `<span class="chip">coverage <b>${pct(meta.coverage)}</b></span>`;
-  const deg = meta.degraded ? `<span class="chip absent">degraded</span>` : '';
-  statusbar.innerHTML = cov + deg + src;
 }
 
 const feed = document.getElementById('feed');
@@ -471,24 +486,30 @@ const VENUES = {
   'Heart of Midlothian': [55.95, -3.19, 'EDINBURGH'],
   'Shamrock Rovers': [53.35, -6.26, 'DUBLIN'],
 };
-const BOX = { lon0: -14, lon1: 34, lat0: 33, lat1: 67 };
-const W = 900, H = 380;
-const project = (lat, lon) => [
-  ((lon - BOX.lon0) / (BOX.lon1 - BOX.lon0)) * (W - 120) + 60,
-  (1 - (lat - BOX.lat0) / (BOX.lat1 - BOX.lat0)) * (H - 90) + 45,
-];
+// equirectangular, same box the world path was projected into
+const W = 1000, H = 500;
+const project = (lat, lon) => [((lon + 180) / 360) * W, ((90 - lat) / 180) * H];
 const SVGNS = 'http://www.w3.org/2000/svg';
 const el = (n, at) => { const e = document.createElementNS(SVGNS, n); for (const k in at) e.setAttribute(k, at[k]); return e; };
+
+async function loadWorld() {
+  try {
+    const r = await fetch('/world.json', { cache: 'force-cache' });
+    const w = await r.json();
+    document.getElementById('land').setAttribute('d', w.d);
+    pushLine('world basemap loaded, natural earth 110m', 'okline');
+  } catch { pushLine('basemap unavailable, running without it', 'warnline'); }
+}
 
 function drawGraticule() {
   const g = document.getElementById('grat');
   if (g.childNodes.length) return;
-  for (let lon = BOX.lon0; lon <= BOX.lon1; lon += 6) {
-    const [x1, y1] = project(BOX.lat0, lon), [x2, y2] = project(BOX.lat1, lon);
+  for (let lon = -180; lon <= 180; lon += 15) {
+    const [x1, y1] = project(90, lon), [x2, y2] = project(-90, lon);
     g.appendChild(el('path', { class: 'grat-line', d: `M${x1} ${y1} L${x2} ${y2}` }));
   }
-  for (let lat = BOX.lat0; lat <= BOX.lat1; lat += 5) {
-    const [x1, y1] = project(lat, BOX.lon0), [x2, y2] = project(lat, BOX.lon1);
+  for (let lat = -75; lat <= 75; lat += 15) {
+    const [x1, y1] = project(lat, -180), [x2, y2] = project(lat, 180);
     g.appendChild(el('path', { class: 'grat-line', d: `M${x1} ${y1} L${x2} ${y2}` }));
   }
 }
@@ -521,24 +542,33 @@ function drawMap(matches) {
     nodes.appendChild(halo);
     nodes.appendChild(el('circle', { class: 'site', cx: x, cy: y, r: m.sources_used > 1 ? 3.6 : 2.6 }));
 
-    // nudge labels apart when two venues sit almost on top of each other
-    const clash = placed.some(p => Math.abs(p[0] - x) < 40 && Math.abs(p[1] - y) < 20);
-    const dy = clash ? 22 : 0;
-    placed.push([x, y]);
+    // labels are pushed out to a callout column so europe does not turn to mush
+    const side = x > 520 ? 1 : -1;
+    let ly = y;
+    while (placed.some(p => p[2] === side && Math.abs(p[1] - ly) < 13)) ly += 13;
+    placed.push([x, ly, side]);
 
-    const lab = el('text', { class: 'site-label', x: x + 8, y: y - 3 + dy });
+    const lx = x + side * 34;
+    nodes.appendChild(el('path', {
+      class: 'leader',
+      d: `M${x + side * 4} ${y} L${x + side * 22} ${ly - 2} L${lx - side * 2} ${ly - 2}`,
+    }));
+
+    const anchor = side > 0 ? 'start' : 'end';
+    const lab = el('text', { class: 'site-label', x: lx, y: ly - 4, 'text-anchor': anchor });
     lab.textContent = v[2];
     nodes.appendChild(lab);
     if (m.consensus) {
-      const pc = el('text', { class: 'site-pct', x: x + 8, y: y + 9 + dy });
+      const pc = el('text', { class: 'site-pct', x: lx, y: ly + 6, 'text-anchor': anchor });
       pc.textContent = Math.round(Math.max(m.consensus.home, m.consensus.away) * 100) + '%';
       nodes.appendChild(pc);
     }
   });
 }
 
-const REFRESH = 20;
+const REFRESH = 12;
 let left = REFRESH;
+let ticks = 0;
 
 async function load(first) {
   if (first) {
@@ -577,8 +607,9 @@ async function load(first) {
     );
     setTimeout(() => pushLine(`round trip ${rtt}ms`, 'okline'), (meta.trace || []).length * 110);
     left = REFRESH;
+    ticks += 1;
+    set('t-tick', ticks);
   } catch (e) {
-    statusbar.innerHTML = '<span class="chip absent">api unreachable, nothing shown rather than guessed</span>';
     pushLine('api unreachable. showing nothing rather than a guess', 'warnline');
   }
 }
@@ -589,6 +620,7 @@ setInterval(() => {
   if (left <= 0) { left = REFRESH; load(false); }
 }, 1000);
 
+loadWorld();
 load(true);
 </script>
 </body>
