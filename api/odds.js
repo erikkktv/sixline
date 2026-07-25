@@ -86,12 +86,18 @@ export default async function handler(req, res) {
 
     const books = [];
     for (const o of comp?.odds || []) {
-      const name = o?.provider?.name;
-      const ml = pickMoneylines(o);
-      const probs = devig(mlToProb(ml.home), mlToProb(ml.draw), mlToProb(ml.away));
-      if (!name || !probs) continue;
-      sourcesSeen.add(name);
-      books.push({ name, home: ml.home, draw: ml.draw, away: ml.away, probs, overround: probs.overround });
+      const provider = o?.provider?.name;
+      if (!provider) continue;
+      // each provider gives two real snapshots: the opening line and the current one
+      for (const phase of ['open', 'close']) {
+        const ml = pickMoneylines(o, phase);
+        const probs = devig(mlToProb(ml.home), mlToProb(ml.draw), mlToProb(ml.away));
+        if (!probs) continue;
+        const name = phase === 'open' ? `${provider} open` : provider;
+        if (books.some(b => b.home === ml.home && b.draw === ml.draw && b.away === ml.away)) continue;
+        sourcesSeen.add(provider);
+        books.push({ name, phase, home: ml.home, draw: ml.draw, away: ml.away, probs, overround: probs.overround });
+      }
     }
 
     // consensus = mean of de-vigged probabilities across reachable books
