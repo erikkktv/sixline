@@ -207,6 +207,121 @@
   }
   footer code { font-family: var(--mono); font-size: 11px; color: var(--paper-soft); }
 
+  /* live rail: telemetry + ticker + ingestion feed */
+  .rail {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    margin-top: 18px; padding: 10px 14px;
+    border-radius: 14px;
+    background: rgba(5, 10, 20, 0.55);
+    border: 1px solid rgba(120, 160, 235, 0.18);
+    font-family: var(--mono); font-size: 11.5px; color: var(--paper-soft);
+    letter-spacing: 0.03em;
+  }
+  .rail .k { color: var(--paper-faint); }
+  .rail .v { color: var(--paper); }
+  .pulse {
+    display: inline-flex; align-items: center; gap: 7px;
+    color: var(--ok); font-weight: 600;
+  }
+  .pulse i {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+    animation: beat 1.6s ease-in-out infinite;
+  }
+  @keyframes beat {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(53,208,127,0.55); opacity: 1; }
+    50% { box-shadow: 0 0 0 6px rgba(53,208,127,0); opacity: 0.55; }
+  }
+  .rail .sep { flex: 1; }
+
+  .ticker {
+    margin-top: 10px; overflow: hidden; position: relative;
+    border-radius: 12px;
+    border: 1px solid rgba(120, 160, 235, 0.14);
+    background: rgba(5, 10, 20, 0.4);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+  .ticker .track {
+    display: inline-flex; gap: 30px; padding: 9px 0;
+    white-space: nowrap;
+    animation: slide 38s linear infinite;
+    font-family: var(--mono); font-size: 12px; color: var(--paper-soft);
+  }
+  .ticker:hover .track { animation-play-state: paused; }
+  @keyframes slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .ticker b { color: var(--paper); font-weight: 600; }
+  .ticker .up { color: var(--ok); }
+  .ticker .dn { color: var(--warn); }
+
+  .feed {
+    margin-top: 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(120, 160, 235, 0.16);
+    background: rgba(3, 7, 14, 0.66);
+    padding: 12px 14px;
+    font-family: var(--mono); font-size: 11.5px;
+    max-height: 132px; overflow: hidden;
+  }
+  .feed .ln {
+    display: flex; gap: 10px; padding: 2.5px 0;
+    color: var(--paper-soft);
+    animation: rise .35s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  .feed .ts { color: var(--paper-faint); flex: none; }
+  .feed .ln.warnline { color: var(--warn); }
+  .feed .ln.okline .msg { color: var(--paper); }
+  .feed .cursor::after {
+    content: "_"; margin-left: 2px; color: var(--blue-soft);
+    animation: blink 1.05s steps(2) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .geo {
+    position: relative; margin-top: 12px;
+    border-radius: 16px; overflow: hidden;
+    border: 1px solid rgba(120,160,235,0.16);
+    background:
+      radial-gradient(80% 120% at 50% 120%, rgba(27,107,255,0.20) 0%, rgba(3,7,14,0) 60%),
+      rgba(3, 7, 14, 0.62);
+  }
+  .geo svg { display: block; width: 100%; height: auto; }
+  .geo-tag {
+    position: absolute; left: 14px; bottom: 10px;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.07em;
+    color: var(--paper-faint); text-transform: uppercase;
+  }
+  .grat-line { stroke: rgba(120,160,235,0.16); stroke-width: 0.6; fill: none; }
+  .arc {
+    fill: none; stroke: var(--blue-soft); stroke-width: 1.1; opacity: 0.5;
+    stroke-dasharray: 5 9;
+    animation: flow 2.4s linear infinite;
+  }
+  @keyframes flow { to { stroke-dashoffset: -70; } }
+  .site { fill: #eaf2ff; }
+  .halo { fill: none; stroke: var(--blue-soft); stroke-width: 1; opacity: 0; transform-origin: center; }
+  .halo.ping { animation: ping 1.9s ease-out infinite; }
+  @keyframes ping {
+    0% { r: 4; opacity: 0.75; }
+    100% { r: 22; opacity: 0; }
+  }
+  .site-label {
+    font-family: var(--mono); font-size: 9.5px; fill: var(--paper-soft);
+    letter-spacing: 0.04em;
+  }
+  .site-pct { font-family: var(--mono); font-size: 10px; fill: #eaf2ff; font-weight: 600; }
+
+  .bar span { transition: width .7s cubic-bezier(.22,1,.36,1); }
+
+  /* stage mode: one match, readable from the back of the room */
+  body.solo .grid { grid-template-columns: 1fr; max-width: 760px; margin-inline: auto; }
+  body.solo .match { padding: 30px 30px 26px; border-radius: 24px; }
+  body.solo .team .nm { font-size: 30px; }
+  body.solo .team .pc { font-size: 30px; }
+  body.solo .bar { height: 16px; }
+  body.solo .book { font-size: 13px; padding: 7px 12px; }
+  body.solo .spread { font-size: 14px; }
+
   .skeleton { opacity: 0.35; }
   @media (prefers-reduced-motion: no-preference) {
     .match { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
@@ -237,7 +352,38 @@
       </div>
     </header>
 
+    <div class="rail">
+      <span class="pulse"><i></i>LIVE</span>
+      <span><span class="k">upstream</span> <span class="v" id="t-ms">—</span></span>
+      <span><span class="k">snapshots</span> <span class="v" id="t-snap">—</span></span>
+      <span><span class="k">sources</span> <span class="v" id="t-src">—</span></span>
+      <span><span class="k">coverage</span> <span class="v" id="t-cov">—</span></span>
+      <span class="sep"></span>
+      <span><span class="k">next sync</span> <span class="v" id="t-next">—</span></span>
+    </div>
+
+    <div class="ticker"><div class="track" id="track"></div></div>
+
+    <div class="geo">
+      <svg id="map" viewBox="0 0 900 380" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <radialGradient id="hub">
+            <stop offset="0%" stop-color="#8fc0ff"/><stop offset="100%" stop-color="#1b6bff" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <g id="grat" opacity="0.5"></g>
+        <g id="arcs"></g>
+        <g id="nodes"></g>
+        <circle id="hubdot" r="4.5" fill="#eaf2ff"/>
+        <circle id="hubglow" r="26" fill="url(#hub)"/>
+        <text id="hublabel" font-size="10" fill="#7f8ea8" font-family="ui-monospace,monospace">INGEST</text>
+      </svg>
+      <div class="geo-tag">venue telemetry · 6 sites · lat/lon of record</div>
+    </div>
+
     <div class="grid" id="grid"></div>
+
+    <div class="feed" id="feed"></div>
 
     <footer>
       <div>frozen at <span id="frozen">—</span> · methodology <code id="method">v0</code> · <code>GET /api/odds</code></div>
@@ -289,22 +435,161 @@ function renderStatus(meta) {
   statusbar.innerHTML = cov + deg + src;
 }
 
-async function load() {
-  grid.innerHTML = Array.from({ length: 6 }, () =>
-    '<article class="match skeleton"><div class="kick"><span>loading</span></div><div class="teams"><div class="team"><span class="nm">—</span></div></div><div class="bar"></div></article>').join('');
+const feed = document.getElementById('feed');
+const track = document.getElementById('track');
+const set = (id, v) => (document.getElementById(id).textContent = v);
+const clock = () => new Date().toISOString().slice(11, 19);
+
+// the feed only ever prints what actually happened on this request
+function pushLine(msg, kind) {
+  const ln = document.createElement('div');
+  ln.className = 'ln ' + (kind || '');
+  ln.innerHTML = `<span class="ts">${clock()}</span><span class="msg">${msg}</span>`;
+  feed.prepend(ln);
+  while (feed.children.length > 9) feed.lastChild.remove();
+}
+
+function paintTicker(matches) {
+  const cell = m => {
+    const c = m.consensus;
+    if (!c) return `<span>${m.home} v ${m.away} <b>no price</b></span>`;
+    const lead = c.home >= c.away ? m.home : m.away;
+    const p = Math.round(Math.max(c.home, c.away) * 100);
+    const mv = m.disagreement ? `<span class="${m.disagreement > 0 ? 'up' : 'dn'}">Δ${(m.disagreement * 100).toFixed(1)}</span>` : '';
+    return `<span>${m.home} v ${m.away} · <b>${lead} ${p}%</b> ${mv}</span>`;
+  };
+  const row = matches.map(cell).join('');
+  track.innerHTML = row + row; // duplicated for a seamless loop
+}
+
+// venue coordinates of record for the six host clubs
+const VENUES = {
+  'KuPS Kuopio': [62.89, 27.68, 'KUOPIO'],
+  'Lincoln Red Imps': [36.14, -5.35, 'GIBRALTAR'],
+  'Dinamo Zagreb': [45.81, 15.98, 'ZAGREB'],
+  'NK Celje': [46.23, 15.27, 'CELJE'],
+  'Heart of Midlothian': [55.95, -3.19, 'EDINBURGH'],
+  'Shamrock Rovers': [53.35, -6.26, 'DUBLIN'],
+};
+const BOX = { lon0: -14, lon1: 34, lat0: 33, lat1: 67 };
+const W = 900, H = 380;
+const project = (lat, lon) => [
+  ((lon - BOX.lon0) / (BOX.lon1 - BOX.lon0)) * (W - 120) + 60,
+  (1 - (lat - BOX.lat0) / (BOX.lat1 - BOX.lat0)) * (H - 90) + 45,
+];
+const SVGNS = 'http://www.w3.org/2000/svg';
+const el = (n, at) => { const e = document.createElementNS(SVGNS, n); for (const k in at) e.setAttribute(k, at[k]); return e; };
+
+function drawGraticule() {
+  const g = document.getElementById('grat');
+  if (g.childNodes.length) return;
+  for (let lon = BOX.lon0; lon <= BOX.lon1; lon += 6) {
+    const [x1, y1] = project(BOX.lat0, lon), [x2, y2] = project(BOX.lat1, lon);
+    g.appendChild(el('path', { class: 'grat-line', d: `M${x1} ${y1} L${x2} ${y2}` }));
+  }
+  for (let lat = BOX.lat0; lat <= BOX.lat1; lat += 5) {
+    const [x1, y1] = project(lat, BOX.lon0), [x2, y2] = project(lat, BOX.lon1);
+    g.appendChild(el('path', { class: 'grat-line', d: `M${x1} ${y1} L${x2} ${y2}` }));
+  }
+}
+
+function drawMap(matches) {
+  drawGraticule();
+  const arcs = document.getElementById('arcs'), nodes = document.getElementById('nodes');
+  arcs.innerHTML = ''; nodes.innerHTML = '';
+  const placed = [];
+  const [hx, hy] = project(48.0, 9.5);
+  document.getElementById('hubdot').setAttribute('cx', hx);
+  document.getElementById('hubdot').setAttribute('cy', hy);
+  document.getElementById('hubglow').setAttribute('cx', hx);
+  document.getElementById('hubglow').setAttribute('cy', hy);
+  document.getElementById('hublabel').setAttribute('x', hx + 10);
+  document.getElementById('hublabel').setAttribute('y', hy + 3);
+
+  matches.forEach((m, i) => {
+    const v = VENUES[m.home];
+    if (!v) return;
+    const [x, y] = project(v[0], v[1]);
+    // curved feed line from venue into the ingest node
+    const mx = (x + hx) / 2, my = (y + hy) / 2 - Math.abs(x - hx) * 0.22;
+    const arc = el('path', { class: 'arc', d: `M${x} ${y} Q${mx} ${my} ${hx} ${hy}` });
+    arc.style.animationDelay = `${i * 0.28}s`;
+    arcs.appendChild(arc);
+
+    const halo = el('circle', { class: 'halo ping', cx: x, cy: y, r: 4 });
+    halo.style.animationDelay = `${i * 0.3}s`;
+    nodes.appendChild(halo);
+    nodes.appendChild(el('circle', { class: 'site', cx: x, cy: y, r: m.sources_used > 1 ? 3.6 : 2.6 }));
+
+    // nudge labels apart when two venues sit almost on top of each other
+    const clash = placed.some(p => Math.abs(p[0] - x) < 40 && Math.abs(p[1] - y) < 20);
+    const dy = clash ? 22 : 0;
+    placed.push([x, y]);
+
+    const lab = el('text', { class: 'site-label', x: x + 8, y: y - 3 + dy });
+    lab.textContent = v[2];
+    nodes.appendChild(lab);
+    if (m.consensus) {
+      const pc = el('text', { class: 'site-pct', x: x + 8, y: y + 9 + dy });
+      pc.textContent = Math.round(Math.max(m.consensus.home, m.consensus.away) * 100) + '%';
+      nodes.appendChild(pc);
+    }
+  });
+}
+
+const REFRESH = 20;
+let left = REFRESH;
+
+async function load(first) {
+  if (first) {
+    grid.innerHTML = Array.from({ length: 6 }, () =>
+      '<article class="match skeleton"><div class="kick"><span>connecting</span></div><div class="teams"><div class="team"><span class="nm">—</span></div></div><div class="bar"></div></article>').join('');
+    pushLine('sixline ingestion worker started', 'okline');
+  }
+  const t0 = performance.now();
   try {
     const r = await fetch('/api/odds', { cache: 'no-store' });
     const j = await r.json();
-    grid.innerHTML = (j.matches || []).map(renderMatch).join('');
-    renderStatus(j.meta || {});
-    document.getElementById('frozen').textContent = j.meta?.frozen_at || '—';
-    document.getElementById('method').textContent = j.meta?.methodologyVersion || 'v0';
+    const rtt = Math.round(performance.now() - t0);
+    const meta = j.meta || {};
+
+    // ?m=<n> isolates a single match for the stage. everything else stays live.
+    const only = new URLSearchParams(location.search).get('m');
+    const all = j.matches || [];
+    const shown = only != null && all[Number(only)] ? [all[Number(only)]] : all;
+    document.body.classList.toggle('solo', shown.length === 1);
+
+    grid.innerHTML = shown.map(renderMatch).join('');
+    renderStatus(meta);
+    paintTicker(j.matches || []);
+    drawMap(j.matches || []);
+
+    set('t-ms', (meta.telemetry?.upstream_ms ?? rtt) + 'ms');
+    set('t-snap', meta.telemetry?.price_snapshots ?? '—');
+    set('t-src', `${meta.telemetry?.sources_live ?? 0}/${meta.telemetry?.sources_declared ?? 0}`);
+    set('t-cov', Math.round((meta.coverage ?? 0) * 100) + '%');
+    document.getElementById('frozen').textContent = meta.frozen_at || '—';
+    document.getElementById('method').textContent = meta.methodologyVersion || 'v0';
+
+    // replay the server side trace, one line at a time, in order
+    (meta.trace || []).forEach((line, i) =>
+      setTimeout(() => pushLine(line, /absent|timeout/.test(line) ? 'warnline' : 'okline'), i * 110)
+    );
+    setTimeout(() => pushLine(`round trip ${rtt}ms`, 'okline'), (meta.trace || []).length * 110);
+    left = REFRESH;
   } catch (e) {
     statusbar.innerHTML = '<span class="chip absent">api unreachable, nothing shown rather than guessed</span>';
-    grid.innerHTML = '';
+    pushLine('api unreachable. showing nothing rather than a guess', 'warnline');
   }
 }
-load();
+
+setInterval(() => {
+  left -= 1;
+  set('t-next', left + 's');
+  if (left <= 0) { left = REFRESH; load(false); }
+}, 1000);
+
+load(true);
 </script>
 </body>
 </html>

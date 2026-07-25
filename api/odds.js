@@ -61,7 +61,10 @@ async function getJson(url, ms = 4000) {
 
 export default async function handler(req, res) {
   const frozenAt = new Date().toISOString();
+  const t0 = Date.now();
   const board = await getJson(SCOREBOARD, 6000);
+  const upstreamMs = Date.now() - t0;
+  const trace = [`GET site.api.espn.com/${LEAGUE}/scoreboard -> ${board ? 200 : 'timeout'} in ${upstreamMs}ms`];
 
   res.setHeader('access-control-allow-origin', '*');
   res.setHeader('cache-control', 's-maxage=60, stale-while-revalidate=300');
@@ -136,6 +139,14 @@ export default async function handler(req, res) {
       : { name: s.name, status: 'absent', reason: s.reason || 'not offered upstream' }
   );
 
+  const snapshots = matches.reduce((a, m) => a + m.books.length, 0);
+  trace.push(`parsed ${matches.length} events`);
+  for (const p of sourcesSeen) trace.push(`provider ${p} -> ${snapshots} price snapshots`);
+  const collapsed = matches.filter(m => m.sources_used === 1).length;
+  if (collapsed) trace.push(`dedup: ${collapsed} identical open/close pairs collapsed`);
+  for (const s of sources.filter(x => x.status === 'absent')) trace.push(`${s.name} -> absent (${s.reason})`);
+  trace.push(`devig applied, consensus computed, coverage ${Math.round((covered / (matches.length || 1)) * 100)}%`);
+
   return res.status(200).json({
     meta: {
       frozen_at: frozenAt,
@@ -146,6 +157,13 @@ export default async function handler(req, res) {
       degraded: sourcesSeen.size < 2,
       sources,
       method: 'american moneyline -> implied probability -> multiplicative devig -> mean across reachable books',
+      telemetry: {
+        upstream_ms: upstreamMs,
+        price_snapshots: snapshots,
+        sources_live: sources.filter(s => s.status === 'live').length,
+        sources_declared: sources.length,
+      },
+      trace,
     },
     matches,
   });
